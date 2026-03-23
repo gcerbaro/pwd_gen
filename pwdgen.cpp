@@ -24,6 +24,7 @@ namespace options{
         const std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         const std::string numbers = "0123456789";
         const std::string symbols = "!@#$%^&*()-_=+[]{}<>?/|";
+        const std::string all[4] = {lower,upper, numbers, symbols};
     };
 
     struct PasswordPolicy {
@@ -36,13 +37,13 @@ namespace options{
         int pwd_length = 16;
         int pin_length = 8;
 
-        std::string to_string(){
+        std::string CUSTOM_to_string(){
             std::string s = "";
             s += "Lowercase : " + useLower + '\n';
             s += "Uppercase : " + useUpper + '\n';
             s += "Numbers : " + useNumbers + '\n';
             s += "Symbols : " + useSymbols + '\n';
-            
+            std::cout << s << std::endl;
             return s;
         }
     };
@@ -52,6 +53,8 @@ namespace options{
         PasswordPolicy pwp;
 
         public:
+            Options(){}
+
             Alphabet get_alphabet(){
                 return ab;
             }
@@ -97,7 +100,7 @@ namespace pwd{
 
             for(int i=0; i < 4; i++){
                 if(options.get_password_policy().char_sets[i]){
-                    allowed += options.get_password_policy().char_sets[i];
+                    allowed += options.get_alphabet().all[i];
                 }
             }
             if(allowed.empty())
@@ -134,7 +137,7 @@ namespace pwd{
             }
 
             std::string get_policy(){
-                return options.get_password_policy().to_string();
+                return options.get_password_policy().CUSTOM_to_string();
             }
 
             void set_policy(const int &n){
