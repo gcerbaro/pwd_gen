@@ -37,13 +37,12 @@ namespace options{
         int pwd_length = 16;
         int pin_length = 8;
 
-        std::string CUSTOM_to_string(){
+        std::string to_string(){
             std::string s = "";
-            s += "Lowercase : " + useLower + '\n';
-            s += "Uppercase : " + useUpper + '\n';
-            s += "Numbers : " + useNumbers + '\n';
-            s += "Symbols : " + useSymbols + '\n';
-            std::cout << s << std::endl;
+            s += "Lowercase : " + std::to_string(useLower) + '\n';
+            s += "Uppercase : " + std::to_string(useUpper) + '\n';
+            s += "Numbers : " + std::to_string(useNumbers) + '\n';
+            s += "Symbols : " + std::to_string(useSymbols) + '\n'; 
             return s;
         }
     };
@@ -77,13 +76,13 @@ namespace options{
                 return pwp.pin_length;
             }
 
-            int set_pwd_length(const int &n){
+            bool set_pwd_length(const int &n){
                 pwp.pwd_length = n;
-                return n;
+                return (pwp.pwd_length == n)? true : false;
             }
-            int set_pin_length(const int &n){
+            bool set_pin_length(const int &n){
                 pwp.pin_length = n;
-                return n;
+                return (pwp.pin_length == n)? true : false;
             }
     };
 }
@@ -137,7 +136,7 @@ namespace pwd{
             }
 
             std::string get_policy(){
-                return options.get_password_policy().CUSTOM_to_string();
+                return options.get_password_policy().to_string();
             }
 
             void set_policy(const int &n){
@@ -145,19 +144,19 @@ namespace pwd{
             }
 
             int change_pwd_policy(const int &input){ 
-                if(input == '0'){
+                if(input == 0){
                     std::cout << get_policy() << std::endl;
                 }
-                if(input == '1'){
+                if(input == 1){
                     set_policy(0);   
                 }
-                if(input == '2'){
+                if(input == 2){
                     set_policy(1);
                 }
-                if(input == '3'){
+                if(input == 3){
                     set_policy(2);
                 }
-                if(input == '4'){
+                if(input == 4){
                     set_policy(3);
                 }
 
@@ -186,8 +185,8 @@ class Menu{
     }
 
     void display_change_of_pwd_policy_menu(){
-        std::cout << "0-See current policy\n"
-                  << "1 - Set lowercase letters On/Off\n"
+        std::cout << "0- See current policy\n"
+                  << "1- Set lowercase letters On/Off\n"
                   << "2- Set uppercase letters On/Off\n"
                   << "3- Set numbers On/Off\n"
                   << "4- Set symbols On/Off\n"
@@ -213,6 +212,7 @@ int main(){
         else if(input == '1'){
             std::cout << "Password size: ";
             size = menu.get_input();
+            
         }
 
         else if(input == '2'){
