@@ -27,12 +27,6 @@ namespace options{
             {"numbers", "0123456789"},
             {"symbols", "!@#$%^&*()-_=+[]{}<>?/|"}
         };
-        /*
-        const std::string lower = "abcdefghijklmnopqrstuvwxyz";
-        const std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        const std::string numbers = "0123456789";
-        const std::string symbols = "!@#$%^&*()-_=+[]{}<>?/|";
-        const std::string all[4] = {lower,upper, numbers, symbols};*/
     };
 
     struct PasswordPolicy {
@@ -119,9 +113,34 @@ namespace pwd{
             return options.get_alphabet().char_sets.at("numbers")[rng.get(options.get_alphabet().char_sets.at("numbers").size())];
         }
 
+        bool verify_policy(const std::string &s){
+            std::map<std::string, bool> policy = options.get_password_policy().char_sets;
+            std::map<std::string, bool> found = {
+                {"lower", false},
+                {"upper", false},
+                {"numbers", false},
+                {"symbols", false}
+            };
+
+            for(char c : s){
+                for(auto &it : policy){
+                    if(it.second && options.get_alphabet().char_sets.at(it.first).find(c) != std::string::npos){
+                        found[it.first] = true;
+                    }
+                }
+            }
+
+            for(auto &it : policy){
+                if(it.second && !found[it.first]){
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         public:
             Pwd(){}
-            //bool check_for_repetition(const std::string &s){}
 
             std::string generate_pwd(){
                 std::string pwd = "";
@@ -130,6 +149,11 @@ namespace pwd{
                     pwd += pick_a_char();
                 }
 
+                if(verify_policy(pwd)){
+                     return pwd;
+                } else{
+                    return generate_pwd();
+                }
                 return pwd;
             }
 
@@ -146,8 +170,12 @@ namespace pwd{
                 return options.get_password_policy().to_string();
             }
 
-            void set_pwd_length(const int &n){
-                if(options.set_pwd_length(n)) std::cout << "Password length set to " << n << std::endl;
+            bool set_pwd_length(const int &n){
+                if(options.set_pwd_length(n)){
+                    return true;
+                } else{
+                    return false;
+                }
             }
             void set_pin_length(const int &n){
                 if(options.set_pin_length(n)) std::cout << "PIN length set to " << n << std::endl;
@@ -229,6 +257,7 @@ int main(){
         else if(input == '1'){
             std::cout << "Password size: ";
             size = menu.get_input();
+                p.set_pwd_length(size);
             
         }
 
@@ -244,6 +273,7 @@ int main(){
         else if(input == '4'){
             std::cout << "PIN size: ";
             size = menu.get_input();
+            p.set_pin_length(size);
         }
         else if(input == '5') exit(0);
 
