@@ -1,35 +1,91 @@
 #include<iostream>
 #include<cstdlib>
-#include<ctime>
+#include<random>
 #include<string>
+#include<map>
 
 namespace options{
 
-    class Options{
-        std::string LOWER_CASE;
-        std::string UPPER_CASE;
-        std::string SYMBOLS;
-        std::string NUMBERS;
-        unsigned int NUMBER_OF_OPTIONS = 4;
-
-        int get_random(const int &MAX){
-            unsigned int number = std::rand() % MAX;
-            return number;
-        }
-
+    class RNG{
+        private:
+            std::random_device rd;
+            std::mt19937 gen{rd()};
         public:
-            Options(){
-                LOWER_CASE = "abcdefghijklmnopqrstuvxwyz";
-                UPPER_CASE = "ABCDEFGHIJKLMNOPQRSTUVXWYZ";
-                SYMBOLS = "\'\"@#$%&*()_-=+`{^~}<>:\\/;.,";
-                NUMBERS = "0123456789";
+            RNG() : gen(rd()) {}
+
+            int get(const int &max){
+                std::uniform_int_distribution<> dist(0, max - 1);
+                return dist(gen);
             }
 
-            char pick_a_char(){
-                const std::string OPTIONS[4] = {LOWER_CASE, UPPER_CASE, SYMBOLS, NUMBERS};
-                unsigned short int list_source_of_symbol = get_random(NUMBER_OF_OPTIONS);
-                unsigned short int word_source_of_symbol = get_random(OPTIONS[list_source_of_symbol].size());
-                return OPTIONS[list_source_of_symbol][word_source_of_symbol];
+    };
+
+    struct Alphabet {
+        const std::map<std::string, std::string> char_sets = {
+            {"lower", "abcdefghijklmnopqrstuvwxyz"},
+            {"upper", "ABCDEFGHIJKLMNOPQRSTUVWXYZ"},
+            {"numbers", "0123456789"},
+            {"symbols", "!@#$%^&*()-_=+[]{}<>?/|"}
+        };
+    };
+
+    struct PasswordPolicy {
+        std::map<std::string, bool> char_sets = {
+            {"lower", true},
+            {"upper", true},
+            {"numbers", true},
+            {"symbols", true}
+        };
+        
+        int pwd_length = 16;
+        int pin_length = 8;
+
+        std::string to_string(){
+            std::string s = "";
+            for(auto &it : char_sets){
+                s += it.first + ": " + (it.second ? "On" : "Off") + "\n";
+            }
+            return s;
+        }
+    };
+
+    class Options{
+        Alphabet ab;
+        PasswordPolicy pwp;
+
+        public:
+            Options(){}
+
+            Alphabet get_alphabet(){
+                return ab;
+            }
+
+            PasswordPolicy get_password_policy(){
+                return pwp;
+            }
+
+            void set_password_policy(std::string key){
+                for(auto &it: pwp.char_sets){
+                    if(it.first == key){
+                        it.second = !it.second;
+                        break;
+                    }
+                }
+            }
+            int get_pwd_length(){
+                return pwp.pwd_length;
+            }
+            int get_pin_length(){
+                return pwp.pin_length;
+            }
+
+            bool set_pwd_length(const int &n){
+                pwp.pwd_length = n;
+                return (pwp.pwd_length == n)? true : false;
+            }
+            bool set_pin_length(const int &n){
+                pwp.pin_length = n;
+                return (pwp.pin_length == n)? true : false;
             }
     };
 }
@@ -37,51 +93,134 @@ namespace options{
 namespace pwd{
 
     class Pwd{
-        options::Options options;
-        const short int LIMIT_PERCENTAGE_REPETITION = 0.2;
-        const short int MINIMUM_PWD_SIZE = 8;
+        options::Options options = options::Options();
+        options::RNG rng = options::RNG();
+
+        char pick_a_char(){
+            std::string allowed;
+            for(auto &it : options.get_password_policy().char_sets){
+                if(it.second){
+                    allowed += options.get_alphabet().char_sets.at(it.first);
+                }
+            }
+            if(allowed.empty())
+            throw std::runtime_error("No characters allowed");
+
+            return allowed[rng.get(allowed.size())];
+        }
+
+        char pick_a_number(){
+            return options.get_alphabet().char_sets.at("numbers")[rng.get(options.get_alphabet().char_sets.at("numbers").size())];
+        }
+
+        bool verify_policy(const std::string &s){
+            std::map<std::string, bool> policy = options.get_password_policy().char_sets;
+            std::map<std::string, bool> found = {
+                {"lower", false},
+                {"upper", false},
+                {"numbers", false},
+                {"symbols", false}
+            };
+
+            for(char c : s){
+                for(auto &it : policy){
+                    if(it.second && options.get_alphabet().char_sets.at(it.first).find(c) != std::string::npos){
+                        found[it.first] = true;
+                    }
+                }
+            }
+
+            for(auto &it : policy){
+                if(it.second && !found[it.first]){
+                    return false;
+                }
+            }
+
+            return true;
+        }
 
         public:
             Pwd(){}
 
-            bool check_for_repetition(const std::string s){
-                unsigned int char_counter = 0;
-
-                for(int i=0; i < s.size(); i++){
-
-                    for(int j=0; j < s.size(); j++){
-                        if(s[i] == s[j]) char_counter++;
-                    }
-
-                    if(char_counter / s.size() > LIMIT_PERCENTAGE_REPETITION) return false;
-
-                    std::cout << char_counter << '\n';
-                    char_counter = 0;
-                } 
-
-                return true;
-            }
-
-            bool verify_pwd_size(const int &size){ return size < MINIMUM_PWD_SIZE; }
-
-            std::string generate_pwd(const int &size){
+            std::string generate_pwd(){
                 std::string pwd = "";
 
-                if(verify_pwd_size(size)) return "";
-
-                for(int i = 0; i < size; i++){
-                    pwd += options.pick_a_char();
+                for(int i = 0; i < options.get_pwd_length(); i++){
+                    pwd += pick_a_char();
                 }
 
+                if(verify_policy(pwd)){
+                     return pwd;
+                } else{
+                    return generate_pwd();
+                }
                 return pwd;
             }
+
+            std::string generate_pin(){
+                std::string pin = "";
+
+                for(int i = 0; i< options.get_pin_length(); i++){
+                    pin += pick_a_number();
+                }
+                return pin;
+            }
+
+            std::string get_policy(){
+                return options.get_password_policy().to_string();
+            }
+
+            bool set_pwd_length(const int &n){
+                if(options.set_pwd_length(n)){
+                    return true;
+                } else{
+                    return false;
+                }
+            }
+            void set_pin_length(const int &n){
+                if(options.set_pin_length(n)) std::cout << "PIN length set to " << n << std::endl;
+            }
+
+            void set_policy(std::string key){
+                options.set_password_policy(key);
+            }
+
+            int change_pwd_policy(const int &input){ 
+                if(input == 0){
+                    std::cout << get_policy() << std::endl;
+                }
+                else if(input == 1){
+                    set_policy("lower");
+                }
+                else if(input == 2){
+                    set_policy("upper");
+                }
+                else if(input == 3){
+                    set_policy("numbers");
+                }
+                else if(input == 4){
+                    set_policy("symbols");
+                }
+                else{
+                    std::cout << "Option " << input << " is invalid\n";
+                }
+
+                return input;
+            }
+
     };
 }
 
-namespace menu{
+class Menu{
+    public:
+    Menu(){};
+
     void help_str(){ std::cout << "Press H for help\n"; }
 
-    void display_menu(){ std::cout << "1- Set password size\n2- Generate new password\n3- Close\n"; }
+    void display_menu(){ 
+        std::cout << 
+        "1- Set password size\n2- Generate new password\n3- Generate a PIN\n4- Set PIN size\n5- Close\n6- Change password policy\n";
+    }
 
     int get_input(){
         int input;
@@ -89,35 +228,59 @@ namespace menu{
 
         return input;
     }
-}
+
+    void display_change_of_pwd_policy_menu(){
+        std::cout << "0- See current policy\n"
+                  << "1- Set lowercase letters On/Off\n"
+                  << "2- Set uppercase letters On/Off\n"
+                  << "3- Set numbers On/Off\n"
+                  << "4- Set symbols On/Off\n"
+                  << "5- Return to main menu\n";
+    }
+};
 
 int main(){
     char input;
     std::string s;
     int size = 0;
     pwd::Pwd p;
-    std::srand(std::time(nullptr));
+    Menu menu = Menu();
 
     while(true){
-        menu::help_str();
+        menu.help_str();
         std::cin>> input;
 
         if(input == 'h' || input == 'H'){
-            menu::display_menu();
+            menu.display_menu();
         }
 
         else if(input == '1'){
             std::cout << "Password size: ";
-            size = menu::get_input();
+            size = menu.get_input();
+                p.set_pwd_length(size);
+            
         }
 
         else if(input == '2'){
-            s = p.generate_pwd(size);
+            s = p.generate_pwd();
             std::cout << "Password generated: " << s << std::endl;
         }
 
         else if(input == '3'){
-            exit(0);
+            s = p.generate_pin();
+            std::cout << "PIN generated: "<< s << std::endl;
+        }
+        else if(input == '4'){
+            std::cout << "PIN size: ";
+            size = menu.get_input();
+            p.set_pin_length(size);
+        }
+        else if(input == '5') exit(0);
+
+        else if(input == '6'){
+            do{
+                menu.display_change_of_pwd_policy_menu();
+            }while(p.change_pwd_policy(menu.get_input()) != 5);
         }
 
         else{
