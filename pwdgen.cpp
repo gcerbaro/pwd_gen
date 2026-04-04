@@ -8,15 +8,19 @@ class RNG
 {
 private:
     std::random_device rd;
-    std::mt19937 gen{rd()};
 
 public:
-    RNG() : gen(rd()) {}
+    RNG() {}
 
-    int get(const int &max)
+    int get(int max)
     {
-        std::uniform_int_distribution<> dist(0, max - 1);
-        return dist(gen);
+        if (max <= 0)
+        {
+            throw std::invalid_argument("max must be > 0");
+        }
+
+        std::uniform_int_distribution<int> dist(0, max - 1);
+        return dist(rd);
     }
 };
 
@@ -197,8 +201,7 @@ public:
 
     void set_pwd_length(const int &n)
     {
-      pwp.set_pwd_length(n);
-
+        pwp.set_pwd_length(n);
     }
     void set_pin_length(const int &n)
     {
@@ -210,13 +213,21 @@ public:
         pwp.set_policy(key);
     }
 
-    int change_pwd_policy(const int &input)
+    bool validate_numeric_input(const int &input)
     {
-        if (input == 0)
+        if (std::cin.fail())
         {
-            std::cout << get_policy() << std::endl;
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            return false;
         }
-        else if (input == 1)
+        else
+            return true;
+    }
+
+    bool switch_pwd_policy(const int &input)
+    {
+        if (input == 1)
         {
             set_policy("lower");
         }
@@ -232,15 +243,11 @@ public:
         {
             set_policy("symbols");
         }
-        else if(input ==5){
-            std::cout<< "Returning to main menu\n";
-        }
-        else
-        {
-            std::cout << "Option " << input << " is invalid\n";
+        else{ 
+            return false;
         }
 
-        return input;
+        return true;
     }
 };
 
@@ -279,6 +286,29 @@ public:
                   << "4- Set symbols On/Off\n"
                   << "5- Return to main menu\n";
     }
+
+    int change_pwd_policy(const int &input, Pwd &p)
+    {
+        
+        if(input == 0){
+            std::cout << p.get_policy() << std::endl;
+            return input;
+        }
+        else if(input == 5)
+        {
+            std::cout << "Returning to main menu\n";
+            return input;
+        }
+        else if(p.switch_pwd_policy(input))
+        {
+            return input;
+        }
+         else
+        {
+            std::cout << "Option " << input << " is invalid\n";
+            return -1;
+        }   
+    }
 };
 
 int main()
@@ -303,7 +333,19 @@ int main()
         {
             std::cout << "Password size: ";
             size = menu.get_input();
-            p.set_pwd_length(size);
+            if (p.validate_numeric_input(size))
+            {
+                if (size <= 0)
+                {
+                    std::cout << "Password size must be greater than 0\n";
+                    continue;
+                }
+                p.set_pwd_length(size);
+            }
+            else
+            {
+                std::cout << "Invalid input. Please enter a numeric value.\n";
+            }
         }
 
         else if (input == '2')
@@ -331,7 +373,7 @@ int main()
             do
             {
                 menu.display_change_of_pwd_policy_menu();
-            } while (p.change_pwd_policy(menu.get_input()) != 5);
+            } while (menu.change_pwd_policy(menu.get_input(),p ) != 5);
         }
 
         else
